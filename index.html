@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Website lưu dữ liệu</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      max-width: 720px; margin: 40px auto; padding: 16px;
+      font-family: Arial, sans-serif; background: #f2f4f7; color: #172033;
+    }
+    main { background: white; padding: 24px; border-radius: 14px; }
+    input, button {
+      width: 100%; padding: 12px; margin-top: 10px; font-size: 16px;
+    }
+    input { border: 1px solid #cbd5e1; border-radius: 6px; }
+    button {
+      background: #1769e0; color: white; border: 0; border-radius: 6px;
+      cursor: pointer;
+    }
+    button:disabled { opacity: .6; cursor: wait; }
+    li { padding: 10px 0; border-bottom: 1px solid #e2e8f0; overflow-wrap: anywhere; }
+    #status { min-height: 24px; }
+    .note { color: #526079; font-size: 14px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Website lưu dữ liệu</h1>
+  <p>Nhập nội dung và lưu trực tiếp lên máy chủ, không dùng form HTML.</p>
+  <input id="content" type="text" maxlength="1000" placeholder="Nhập nội dung...">
+  <button id="saveButton" type="button">Lưu dữ liệu</button>
+  <p id="status" aria-live="polite"></p>
+  <h2>Dữ liệu đã lưu</h2>
+  <ul id="dataList"></ul>
+  <p class="note">Bản mẫu học tập. Khi đưa lên Internet, hãy bổ sung xác thực và giới hạn quyền truy cập.</p>
+</main>
+<script>
+const input = document.getElementById("content");
+const statusText = document.getElementById("status");
+const button = document.getElementById("saveButton");
+const list = document.getElementById("dataList");
+
+async function loadData() {
+  try {
+    const response = await fetch("/api/data");
+    if (!response.ok) throw new Error("Không tải được dữ liệu");
+    const items = await response.json();
+    list.replaceChildren();
+    for (const item of items) {
+      const li = document.createElement("li");
+      li.textContent = item.content;
+      list.appendChild(li);
+    }
+  } catch (error) {
+    statusText.textContent = error.message || "Không tải được dữ liệu.";
+  }
+}
+
+async function saveData() {
+  const content = input.value.trim();
+  if (!content) {
+    statusText.textContent = "Bạn hãy nhập nội dung trước.";
+    return;
+  }
+  button.disabled = true;
+  statusText.textContent = "Đang lưu...";
+  try {
+    const response = await fetch("/api/data", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content })
+    });
+    const result = await response.json();
+    if (!response.ok) throw new Error(result.error || "Lưu thất bại");
+    statusText.textContent = "Đã lưu thành công lên máy chủ!";
+    input.value = "";
+    await loadData();
+  } catch (error) {
+    statusText.textContent = error.message || "Có lỗi khi lưu.";
+  } finally {
+    button.disabled = false;
+  }
+}
+
+button.addEventListener("click", saveData);
+input.addEventListener("keydown", event => {
+  if (event.key === "Enter") saveData();
+});
+loadData();
+</script>
+</body>
+</html>
